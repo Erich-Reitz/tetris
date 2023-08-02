@@ -86,6 +86,17 @@ func leftMostPosition*(tetromino: Tetromino): int =
     return tetromino.btmLeft.col + minColIndex
 
 
+func bottomMostPosition(tetromino: Tetromino): int =
+    var maxRowIndex = -1
+    for i in 0 ..< tetromino.shape.len:
+        for j in 0 ..< tetromino.shape[i].len:
+            if tetromino.shape[i][j] == 1 and i > maxRowIndex:
+                maxRowIndex = i
+    return tetromino.btmLeft.row - maxRowIndex
+
+
+
+
 func moveRight*(tetromino: var Tetromino) =
     if rightMostPosition(tetromino) + 1 < MapCols:
         tetromino.btmLeft.col += 1
@@ -94,6 +105,10 @@ func moveRight*(tetromino: var Tetromino) =
 func moveLeft*(tetromino: var Tetromino) =
     if leftMostPosition(tetromino) - 1 >= 0:
         tetromino.btmLeft.col -= 1
+
+func moveDown*(tetromino: var Tetromino) =
+    if bottomMostPosition(tetromino) + 1 < MapRows:
+        tetromino.btmLeft.row += 1
 
 proc rotateRight*(tetromino: var Tetromino) =
     var newShape: seq[seq[int]] = newSeqWith(tetromino.shape[0].len, newSeq[

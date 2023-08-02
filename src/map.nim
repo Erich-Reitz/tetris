@@ -82,13 +82,37 @@ proc addLandedTetromino(map: var Map, tetromino: Tetromino) =
         map.playfield[pos.row][pos.col].filled = true
 
 
+
+func placeTetromino(map: var Map, tetromino: Tetromino) =
+    addLandedTetromino(map, tetromino)
+    map.fallingBlock = none(Tetromino)
+
 proc handleInput*(map: var Map, inputs: var array[Input, int]) =
-    while inputs[Right] > 0 and isSome(map.fallingBlock):
+    if isNone(map.fallingBlock):
+        return
+
+    var falling = map.fallingBlock.get()
+    while inputs[Right] > 0:
         inputs[Right] = inputs[Right] - 1
-        moveRight(map.fallingBlock.get())
-    while inputs[Left] > 0 and isSome(map.fallingBlock):
+        moveRight(falling)
+
+    while inputs[Left] > 0:
         inputs[Left] = inputs[Left] - 1
-        moveLeft(map.fallingBlock.get())
+        moveLeft(falling)
+
+    var setRemoved = false
+    while inputs[Down] > 0:
+        inputs[Down] = inputs[Down] - 1
+        moveDown(falling)
+        if shouldStopTetromino(map, falling):
+            placeTetromino(map, falling)
+            inputs[Down] = 0
+            setRemoved = true
+
+    if setRemoved == false:
+        map.fallingBlock = some(falling)
+
+
 
 
 proc update*(map: var Map) =
@@ -97,11 +121,9 @@ proc update*(map: var Map) =
         map.fallingBlock = some(newTet)
     else:
         var falling = map.fallingBlock.get()
-        falling.btmLeft.row += 1
+        moveDown(falling)
         if shouldStopTetromino(map, falling):
-            # place tetro
-            addLandedTetromino(map, falling)
-            map.fallingBlock = none(Tetromino)
+            placeTetromino(map, falling)
         else:
             map.fallingBlock = some(falling)
 
