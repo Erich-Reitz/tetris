@@ -21,7 +21,7 @@ type Game* = object
 proc createGame*(): Game =
     let window = newWindow("Tetris", GAME_WIDTH, GAME_HEIGHT)
     let map = createMap(20, 20)
-    Game(window: window, map: map, lastDropTime: none(uint32), dropDelay: 800)
+    Game(window: window, map: map, lastDropTime: none(uint32), dropDelay: 1200)
 
 proc handleInput*(game: var Game) =
     handleInput(game.window, game.inputs)

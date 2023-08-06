@@ -1,5 +1,8 @@
 import random
+import std/options
 import std/sequtils
+import std/sugar
+
 
 import sdl2
 
@@ -19,6 +22,18 @@ type Tetromino* = object
     t_type*: TetrominoType
     shape*: seq[seq[int]]
     btmLeft*: point.Point
+
+
+proc deepCopy*(tetromino: Tetromino): Tetromino =
+    var newShape: seq[seq[int]] = @[]
+    for row in tetromino.shape:
+        newShape.add(row)
+
+    return Tetromino(
+        t_type: tetromino.t_type,
+        shape: newShape,
+        btmLeft: tetromino.btmLeft
+    )
 
 
 func tetrominoColor(t: TetrominoType): Color =
@@ -55,7 +70,7 @@ proc createRandomTetromino*(): Tetromino =
         shape = @[@[0, 1, 1], @[1, 1, 0], @[0, 0, 0]]
 
     Tetromino(t_type: tetroType, shape: shape,
-            btmLeft: point.Point(row: 0, col: 0))
+            btmLeft: point.Point(row: 2, col: 0))
 
 func getPositionsOfTetromino*(tetromino: Tetromino): seq[point.Point] =
     var positions: seq[point.Point]
@@ -64,9 +79,28 @@ func getPositionsOfTetromino*(tetromino: Tetromino): seq[point.Point] =
             if tetromino.shape[i][j] == 1:
                 let row = tetromino.btmLeft.row - i
                 let col = tetromino.btmLeft.col + j
-                if row >= 0 and row < MapRows and col >= 0 and col < MapCols:
-                    positions.add(point.Point(row: row, col: col))
+
+                positions.add(point.Point(row: row, col: col))
     return positions
+
+
+
+func renderablePositions(tetromino: Tetromino): seq[point.Point] =
+    let allPositions = getPositionsOfTetromino(tetromino)
+
+    return collect(newSeq):
+        for pos in allPositions:
+            if isSome(withinBoard(pos)):
+                get(withinBoard(pos))
+
+
+
+func allPositionsWithinBoundsExceptUpper*(tetromino: Tetromino): bool =
+    let positions = getPositionsOfTetromino(tetromino)
+    for pos in positions:
+        if pos.row >= MapRows or pos.col < 0 or pos.col >= MapCols:
+            return false
+    return true
 
 func rightMostPosition(tetromino: Tetromino): int =
     var maxColIndex = -1

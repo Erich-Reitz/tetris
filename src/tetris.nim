@@ -4,7 +4,7 @@ import sdl2
 import game
 discard sdl2.init(INIT_EVERYTHING)
 
-const DesiredFrameRate = 15
+const DesiredFrameRate = 30
 let FrameDelay: uint32 = uint32(1000 div DesiredFrameRate)
 
 

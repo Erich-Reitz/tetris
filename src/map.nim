@@ -11,6 +11,7 @@ import tetromino
 
 
 
+
 type Map* = object
     playfield: array[MapRows, array[MapCols, Cell]]
     fallingBlock: Option[Tetromino]
@@ -59,8 +60,10 @@ proc render*(map: Map, renderer: RendererPtr) =
 
 
 
+# if can move: should take a Point that represents a delta
+proc canMoveTetromino(map: Map, tetromino: Tetromino,
+        delta: point.Point): bool =
 
-proc shouldStopTetromino(map: Map, tetromino: Tetromino): bool =
     let bottomLeft = tetromino.btmLeft
     for i in 0 ..< tetromino.shape.len:
         for j in 0 ..< tetromino.shape[i].len:
@@ -69,11 +72,19 @@ proc shouldStopTetromino(map: Map, tetromino: Tetromino): bool =
 
             let pos = point.Point(row: bottomLeft.row - i,
                     col: bottomLeft.col + j)
-            let posUnder = positionUnder(pos)
-            if isNone(posUnder) or cellAt(map, get(posUnder)).filled:
-                return true
 
-    return false
+            # if point is above board, don't check
+            if pos.row < 0:
+                continue
+
+            let newPos = withinBoard(applyDelta(pos, delta))
+            if isNone(newPos) or cellAt(map, get(newPos)).filled:
+                return false
+
+    return true
+
+
+
 
 
 proc addLandedTetromino(map: var Map, tetromino: Tetromino) =
@@ -87,27 +98,45 @@ func placeTetromino(map: var Map, tetromino: Tetromino) =
     addLandedTetromino(map, tetromino)
     map.fallingBlock = none(Tetromino)
 
+
+proc canRotateTetromino(map: var Map, tetromino: Tetromino): bool =
+    var temp = deepCopy(tetromino)
+    rotateRight(temp)
+    allPositionsWithinBoundsExceptUpper(temp)
+
+
+
 proc handleInput*(map: var Map, inputs: var array[Input, int]) =
     if isNone(map.fallingBlock):
         return
-
     var falling = map.fallingBlock.get()
+
+    while inputs[Up] > 0:
+        inputs[Up] = inputs[Up] - 1
+        if canRotateTetromino(map, falling):
+            rotateRight(falling)
+
     while inputs[Right] > 0:
         inputs[Right] = inputs[Right] - 1
-        moveRight(falling)
+        if canMoveTetromino(map, falling, toDelta(Right)):
+            moveRight(falling)
 
     while inputs[Left] > 0:
         inputs[Left] = inputs[Left] - 1
-        moveLeft(falling)
+        if canMoveTetromino(map, falling, toDelta(Left)):
+            moveLeft(falling)
 
     var setRemoved = false
     while inputs[Down] > 0:
         inputs[Down] = inputs[Down] - 1
-        moveDown(falling)
-        if shouldStopTetromino(map, falling):
+        if canMoveTetromino(map, falling, toDelta(Down)) == true:
+            moveDown(falling)
+        if canMoveTetromino(map, falling, toDelta(Down)) == false:
             placeTetromino(map, falling)
             inputs[Down] = 0
             setRemoved = true
+
+
 
     if setRemoved == false:
         map.fallingBlock = some(falling)
@@ -122,7 +151,8 @@ proc update*(map: var Map) =
     else:
         var falling = map.fallingBlock.get()
         moveDown(falling)
-        if shouldStopTetromino(map, falling):
+        let deltaDown = point.Point(row: 1, col: 0)
+        if canMoveTetromino(map, falling, deltaDown) == false:
             placeTetromino(map, falling)
         else:
             map.fallingBlock = some(falling)
