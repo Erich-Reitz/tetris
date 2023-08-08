@@ -52,9 +52,16 @@ func tetrominoColor(t: TetrominoType): Color =
 func tetrominoColor*(t: Tetromino): Color =
     tetrominoColor(t.t_type)
 
+func createSingleTetrominoFromExisting(t: Tetromino,
+        point: point.Point): Tetromino =
+    let singleBlock: seq[seq[int]] = @[ @[1]]
+
+    Tetromino(t_type: t.t_type, shape: singleBlock, btmLeft: point)
+
 proc createRandomTetromino*(): Tetromino =
     randomize()
     let tetroType = TetrominoType(rand(ord(SKEW)))
+
     var shape: seq[seq[int]]
 
     case tetroType
@@ -84,8 +91,17 @@ func getPositionsOfTetromino*(tetromino: Tetromino): seq[point.Point] =
     return positions
 
 
+func splitTetrominoIntoSingleBlocks*(tetromino: Tetromino): seq[Tetromino] =
+    var blocks: seq[Tetromino] = @[]
+    let positions = getPositionsOfTetromino(tetromino)
+    for pos in positions:
+        let singleBlock = createSingleTetrominoFromExisting(tetromino, pos)
+        blocks.add(singleBlock)
 
-func renderablePositions(tetromino: Tetromino): seq[point.Point] =
+    return blocks
+
+
+func renderablePositions*(tetromino: Tetromino): seq[point.Point] =
     let allPositions = getPositionsOfTetromino(tetromino)
 
     return collect(newSeq):
@@ -127,8 +143,6 @@ func bottomMostPosition(tetromino: Tetromino): int =
             if tetromino.shape[i][j] == 1 and i > maxRowIndex:
                 maxRowIndex = i
     return tetromino.btmLeft.row - maxRowIndex
-
-
 
 
 func moveRight*(tetromino: var Tetromino) =

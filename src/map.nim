@@ -1,4 +1,5 @@
 import std/options
+import std/sequtils
 
 import sdl2
 
@@ -25,8 +26,8 @@ proc createMap*(cellWidth: cint, cellHeight: cint): Map =
 
     let topLeftX = (GAME_WIDTH - playfieldWidth) div 2
     let topLeftY = (GAME_HEIGHT - playfieldHeight) div 2
-    for row in 0 ..< 24:
-        for col in 0 ..< 10:
+    for row in 0 ..< MapRows:
+        for col in 0 ..< MapCols:
             let cellX = topLeftX + col * cellWidth
             let cellY = topLeftY + row * cellHeight
             result.playfield[row][col] = createCell(cellHeight, cellWidth,
@@ -40,7 +41,7 @@ proc cellAt(map: Map, point: point.Point): Cell =
 
 proc renderTetromino(map: Map, tetromino: Tetromino, renderer: RendererPtr) =
     let color = tetrominoColor(tetromino)
-    let cellsToColor = getPositionsOfTetromino(tetromino)
+    let cellsToColor = renderablePositions(tetromino)
     for cellToColor in cellsToColor:
         renderFill(cellAt(map, cellToColor), renderer, color)
 
@@ -88,9 +89,12 @@ proc canMoveTetromino(map: Map, tetromino: Tetromino,
 
 
 proc addLandedTetromino(map: var Map, tetromino: Tetromino) =
-    add(map.landedBlocks, tetromino)
-    for pos in getPositionsOfTetromino(tetromino):
-        map.playfield[pos.row][pos.col].filled = true
+    let blocks = splitTetrominoIntoSingleBlocks(tetromino)
+    for tetromino in blocks:
+        add(map.landedBlocks, tetromino)
+        # should only be one position; use loop anyway
+        for pos in getPositionsOfTetromino(tetromino):
+            map.playfield[pos.row][pos.col].filled = true
 
 
 
@@ -142,6 +146,46 @@ proc handleInput*(map: var Map, inputs: var array[Input, int]) =
         map.fallingBlock = some(falling)
 
 
+proc clearRow(map: var Map, row: int) =
+
+    for r in countdown(row, 1):
+        for c in 0..MapCols - 1:
+            map.playfield[r][c].filled = map.playfield[r-1][c].filled
+
+    for col in 0..MapCols - 1:
+        map.playfield[0][col].filled = false
+
+
+
+
+    let cellsNotInClearedrow = map.landedBlocks.filterIt(it.btmLeft.row != row)
+
+    var newLandedBlocks: seq[Tetromino] = @[]
+    for tetromino in cellsNotInClearedrow:
+        let positions = getPositionsOfTetromino(tetromino)
+        var shouldMoveDown = false
+        for pos in positions:
+            if pos.row < row:
+                shouldMoveDown = true
+                break
+
+
+        var newTetromino = deepCopy(tetromino)
+        if shouldMoveDown:
+            newTetromino.btmLeft.row += 1
+
+        newLandedBlocks.add(newTetromino)
+
+    map.landedBlocks = newLandedBlocks
+
+
+
+
+func rowIsFilled(map: Map, row: int): bool =
+    for col in 0 ..< MapCols:
+        if not map.playfield[row][col].filled:
+            return false
+    return true
 
 
 proc update*(map: var Map) =
@@ -150,12 +194,19 @@ proc update*(map: var Map) =
         map.fallingBlock = some(newTet)
     else:
         var falling = map.fallingBlock.get()
-        moveDown(falling)
-        let deltaDown = point.Point(row: 1, col: 0)
-        if canMoveTetromino(map, falling, deltaDown) == false:
+
+        if canMoveTetromino(map, falling, toDelta(Down)) == false:
             placeTetromino(map, falling)
         else:
+            moveDown(falling)
             map.fallingBlock = some(falling)
+
+
+    for i in countdown(MapRows - 1, 0):
+        if rowIsFilled(map, i):
+            clearRow(map, i)
+
+
 
 
 
