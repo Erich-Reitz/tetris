@@ -29,10 +29,10 @@ proc handleInput*(window: var Window, inputs: var array[Input, int]) =
             window.isDone = true
             break
         if evt.kind == KeyDown:
-            inputs[evt.key.keysym.scancode.toInput] += 1
+            let input = evt.key.keysym.scancode.toInput
 
-
-
+            if inputs[input] < 5:
+                inputs[input] += 1
 
 
 
